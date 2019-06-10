@@ -1,0 +1,14 @@
+steps:
+  # name: gcr.io/$PROJECT_ID/protoc:latest
+  # args:
+  #   - -I:ggwt
+  #   - ggwt/ggwt.proto
+  #   - --js_out=import_style=commonjs:ggwt
+  #   - --grpc-web_out=import_style=commonjs,mode=grpcwebtext:ggwt
+  #   - --go_out=plugins=grpc:ggwt
+  - name: "gcr.io/kaniko-project/executor:latest"
+    args:
+      - "--cache"
+      - "--destination=gcr.io/$PROJECT_ID/$_IMG:latest"
+substitutions:
+  _IMG: "ggwt-server"
