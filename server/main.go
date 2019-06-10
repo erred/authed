@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +14,7 @@ import (
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/seankhliao/authed/authed"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -55,7 +58,7 @@ func allowOrigin(o string) bool {
 func main() {
 	ctx := context.Background()
 	svr := NewServer(ctx)
-	gsvr := grpc.NewServer()
+	gsvr := grpc.NewServer(grpc.UnaryInterceptor(svr.authInterceptor))
 	authed.RegisterAuthedServer(gsvr, svr)
 	wsvr := grpcweb.WrapServer(gsvr,
 		grpcweb.WithOriginFunc(allowOrigin),
@@ -67,16 +70,6 @@ func main() {
 			Port, Headers, Origins)
 	}
 	http.ListenAndServe(Port, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if Debug {
-			log.Printf("got %v request for: %v with headers: %v\n", r.Method, r.URL.Path, r.Header)
-		}
-		if b := r.Header.Get("Authorization"); !strings.HasPrefix(b, "Bearer: ") {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		} else if _, err := svr.authClient.VerifyIDToken(context.Background(), strings.TrimPrefix(b, "Bearer: ")); err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
 		wsvr.ServeHTTP(w, r)
 	}))
 }
@@ -104,4 +97,33 @@ func NewServer(ctx context.Context) *Server {
 
 func (s *Server) Echo(ctx context.Context, r *authed.Msg) (*authed.Msg, error) {
 	return r, nil
+}
+
+func (s *Server) authInterceptor(ctx context.Context, r interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	if err := s.authorize(ctx); err != nil {
+		if Debug {
+			log.Printf("authInterceptor not authorized: %v\n", err)
+		}
+		return nil, err
+	}
+
+	return handler(ctx, r)
+}
+
+func (s *Server) authorize(ctx context.Context) error {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return errors.New("authorize: no metadata found")
+	}
+
+	authHeader, ok := md["authorization"]
+	if !ok {
+		return errors.New("authorize: authorization header not found")
+	}
+
+	_, err := s.authClient.VerifyIDToken(context.Background(), authHeader[0])
+	if err != nil {
+		return fmt.Errorf("authorize: VerifyIDToken: %v\n", err)
+	}
+	return nil
 }
