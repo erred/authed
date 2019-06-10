@@ -67,6 +67,9 @@ func main() {
 			Port, Headers, Origins)
 	}
 	http.ListenAndServe(Port, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if Debug {
+			log.Printf("got %v request for: %v with headers: %v\n", r.Method, r.URL.Path, r.Header)
+		}
 		if b := r.Header.Get("Authorization"); !strings.HasPrefix(b, "Bearer: ") {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
