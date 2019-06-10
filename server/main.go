@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/seankhliao/authed/authed"
 	"google.golang.org/grpc"
 )
 
@@ -51,7 +53,7 @@ func allowOrigin(o string) bool {
 func main() {
 	svr := NewServer()
 	gsvr := grpc.NewServer()
-	ggwt.RegisterGgwtServer(gsvr, svr)
+	authed.RegisterAuthedServer(gsvr, svr)
 	wsvr := grpcweb.WrapServer(gsvr,
 		grpcweb.WithOriginFunc(allowOrigin),
 		grpcweb.WithAllowedRequestHeaders(Headers),
@@ -70,4 +72,8 @@ type Server struct{}
 
 func NewServer() *Server {
 	return &Server{}
+}
+
+func (s *Server) Echo(ctx context.Context, r *authed.Msg) (*authed.Msg, error) {
+	return r, nil
 }

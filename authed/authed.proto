@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package authed;
+
+service authed {
+  rpc Echo ( Msg ) returns ( Msg );
+}
+
+message Msg {
+  string msg = 1;
+}
