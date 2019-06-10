@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	firebase "firebase.google.com/go"
+	"firebase.google.com/go/auth"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/seankhliao/authed/authed"
 	"google.golang.org/grpc"
@@ -51,7 +53,8 @@ func allowOrigin(o string) bool {
 }
 
 func main() {
-	svr := NewServer()
+	ctx := context.Background()
+	svr := NewServer(ctx)
 	gsvr := grpc.NewServer()
 	authed.RegisterAuthedServer(gsvr, svr)
 	wsvr := grpcweb.WrapServer(gsvr,
@@ -64,14 +67,36 @@ func main() {
 			Port, Headers, Origins)
 	}
 	http.ListenAndServe(Port, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if b := r.Header.Get("Authorization"); !strings.HasPrefix(b, "Bearer: ") {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		} else if _, err := svr.authClient.VerifyIDToken(context.Background(), strings.TrimPrefix(b, "Bearer: ")); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
 		wsvr.ServeHTTP(w, r)
 	}))
 }
 
-type Server struct{}
+type Server struct {
+	app        *firebase.App
+	authClient *auth.Client
+}
 
-func NewServer() *Server {
-	return &Server{}
+func NewServer(ctx context.Context) *Server {
+	// uses GOOGLE_APPLICATION_CREDENTIALS
+	app, err := firebase.NewApp(ctx, nil)
+	if err != nil {
+		log.Fatalf("NewServer firebase.NewApp: %v\n", err)
+	}
+	authClient, err := app.Auth(ctx)
+	if err != nil {
+		log.Fatalf("NewServer app.Auth: %v\n", err)
+	}
+	return &Server{
+		app:        app,
+		authClient: authClient,
+	}
 }
 
 func (s *Server) Echo(ctx context.Context, r *authed.Msg) (*authed.Msg, error) {
