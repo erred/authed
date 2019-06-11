@@ -9,12 +9,9 @@ steps:
   - name: gcr.io/cloud-builders/docker:latest
     args:
       - build
-      - --cache-from
-      - gcr.io/$PROJECT_ID/$_IMG:latest
-      - -t
-      - gcr.io/$PROJECT_ID/$_IMG:latest
-      - -t
-      - gcr.io/$PROJECT_ID/$_IMG:$SHORT_SHA
+      - --cache-from=gcr.io/$PROJECT_ID/$_IMG:latest
+      - -t=gcr.io/$PROJECT_ID/$_IMG:$SHORT_SHA
+      - -t=gcr.io/$PROJECT_ID/$_IMG:latest
       - .
   - name: gcr.io/cloud-builders/kubectl:latest
     args:
@@ -24,10 +21,12 @@ steps:
       - $_IMG
       - "*=gcr.io/$PROJECT_ID/$_IMG:$SHORT_SHA"
     env:
-      - "CLOUDSDK_COMPUTE_ZONE=us-central1-a"
-      - "CLOUDSDK_CONTAINER_CLUSTER=cluster12"
+      - "CLOUDSDK_COMPUTE_ZONE=$_ZONE"
+      - "CLOUDSDK_CONTAINER_CLUSTER=$_CLUSTER"
 images:
-  - gcr.io/$PROJECT_ID/$_IMG:latest
   - gcr.io/$PROJECT_ID/$_IMG:$SHORT_SHA
+  - gcr.io/$PROJECT_ID/$_IMG:latest
 substitutions:
+  _ZONE: us-central1-a
+  _CLUSTER: cluster12
   _IMG: authed
