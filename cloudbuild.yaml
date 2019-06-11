@@ -9,7 +9,6 @@ steps:
   - name: gcr.io/cloud-builders/docker:latest
     args:
       - build
-      - --cache-from=gcr.io/$PROJECT_ID/$_IMG:latest
       - -t=gcr.io/$PROJECT_ID/$_IMG:$SHORT_SHA
       - -t=gcr.io/$PROJECT_ID/$_IMG:latest
       - .
