@@ -83,7 +83,7 @@ type Server struct {
 
 func NewServer(ctx context.Context) *Server {
 	// uses GOOGLE_APPLICATION_CREDENTIALS
-	cred, err := google.FindDefaultCredentials(ctx)
+	cred, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/firebase.database", "https://www.googleapis.com/auth/userinfo.email")
 	if err != nil {
 		log.Fatalf("NewServer default credentials not found: %v", err)
 	}
