@@ -13,6 +13,8 @@ import (
 	"firebase.google.com/go/auth"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/seankhliao/authed/authed"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -81,7 +83,11 @@ type Server struct {
 
 func NewServer(ctx context.Context) *Server {
 	// uses GOOGLE_APPLICATION_CREDENTIALS
-	app, err := firebase.NewApp(ctx, nil)
+	cred, err := google.FindDefaultCredentials(ctx)
+	if err != nil {
+		log.Fatalf("NewServer default credentials not found: %v", err)
+	}
+	app, err := firebase.NewApp(ctx, nil, option.WithCredentials(cred))
 	if err != nil {
 		log.Fatalf("NewServer firebase.NewApp: %v\n", err)
 	}
