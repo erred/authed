@@ -98,18 +98,22 @@ func NewServer(ctx context.Context) *Server {
 func (s *Server) Echo(ctx context.Context, r *authed.Msg) (*authed.Msg, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
+		log.Printf("Echo: no metadata found")
 		return nil, fmt.Errorf("Echo: no metadata found")
 	}
 	authHeader, ok := md["authorization"]
 	if !ok {
+		log.Printf("Echo: no authorization header found")
 		return nil, fmt.Errorf("Echo: no authorization header found")
 	}
 	token, err := s.authClient.VerifyIDToken(ctx, authHeader[0])
 	if err != nil {
+		log.Printf("Echo: verification: %v", err)
 		return nil, fmt.Errorf("Echo: verification: %v", err)
 	}
 	userRecord, err := s.authClient.GetUser(ctx, token.UID)
 	if err != nil {
+		log.Printf("Echo: GetUser: %v", err)
 		return nil, fmt.Errorf("Echo: GetUser: %v", err)
 	}
 	return &authed.Msg{
@@ -131,16 +135,19 @@ func (s *Server) authInterceptor(ctx context.Context, r interface{}, info *grpc.
 func (s *Server) authorize(ctx context.Context) error {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
+		log.Println("authorize: no metadata found")
 		return errors.New("authorize: no metadata found")
 	}
 
 	authHeader, ok := md["authorization"]
 	if !ok {
+		log.Println("authorize: authorization header not found")
 		return errors.New("authorize: authorization header not found")
 	}
 
 	_, err := s.authClient.VerifyIDToken(context.Background(), authHeader[0])
 	if err != nil {
+		log.Printf("authorize: VerifyIDToken: %v\n", err)
 		return fmt.Errorf("authorize: VerifyIDToken: %v\n", err)
 	}
 	return nil
