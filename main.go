@@ -96,7 +96,25 @@ func NewServer(ctx context.Context) *Server {
 }
 
 func (s *Server) Echo(ctx context.Context, r *authed.Msg) (*authed.Msg, error) {
-	return r, nil
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("Echo: no metadata found")
+	}
+	authHeader, ok := md["authorization"]
+	if !ok {
+		return nil, fmt.Errorf("Echo: no authorization header found")
+	}
+	token, err := s.authClient.VerifyIDToken(ctx, authHeader[0])
+	if err != nil {
+		return nil, fmt.Errorf("Echo: verification: %v", err)
+	}
+	userRecord, err := s.authClient.GetUser(ctx, token.UID)
+	if err != nil {
+		return nil, fmt.Errorf("Echo: GetUser: %v", err)
+	}
+	return &authed.Msg{
+		Msg: fmt.Sprintf("hello %v, your email is %v\n", userRecord.DisplayName, userRecord.Email),
+	}, nil
 }
 
 func (s *Server) authInterceptor(ctx context.Context, r interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
