@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package authed;
 
-service authed {
+service Authed {
   rpc Echo ( Msg ) returns ( Msg );
 }
 
