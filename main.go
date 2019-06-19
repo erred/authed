@@ -13,8 +13,6 @@ import (
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/seankhliao/authed/authed"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -88,14 +86,14 @@ type Server struct {
 
 func NewServer(ctx context.Context) *Server {
 	// uses GOOGLE_APPLICATION_CREDENTIALS
-	log.Infoln("NewServer finding default credentials")
-	cred, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/firebase", "https://www.googleapis.com/auth/cloud-platform")
-	if err != nil {
-		log.Fatalln("NewServer finding default credentials", err)
-	}
+	// log.Infoln("NewServer finding default credentials")
+	// cred, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/firebase", "https://www.googleapis.com/auth/cloud-platform")
+	// if err != nil {
+	// 	log.Fatalln("NewServer finding default credentials", err)
+	// }
 
 	log.Infoln("NewServer firebase NewApp")
-	app, err := firebase.NewApp(ctx, nil, option.WithCredentials(cred))
+	app, err := firebase.NewApp(ctx, nil)
 	if err != nil {
 		log.Fatalln("NewServer firebase NewApp", err)
 	}
