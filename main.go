@@ -61,9 +61,7 @@ func init() {
 
 func allowOrigin(o string) bool {
 	_, ok := Origins[o]
-	if Debug {
-		log.Printf("origin filter %v allowed: %v\n", o, ok)
-	}
+	log.Infoln("allowOrigin: ", o, ok)
 	return ok
 }
 
