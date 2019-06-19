@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"firebase.google.com/go/auth"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/seankhliao/authed/authed"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
@@ -20,17 +20,30 @@ import (
 )
 
 var (
-	// grpc stuff
-	Debug   = false
+	Version = "set with -ldflags \"-X main.Verions=$VERSION\""
+
 	Headers = strings.Split(os.Getenv("HEADERS"), ",")
 	Origins = make(map[string]struct{})
 	Port    = os.Getenv("PORT")
 )
 
 func init() {
-	// grpc stuff
-	if os.Getenv("DEBUG") == "1" {
-		Debug = true
+	switch os.Getenv("LOG_LEVEL") {
+	case "DEBUG":
+		log.SetLevel(log.DebugLevel)
+	case "INFO":
+		log.SetLevel(log.InfoLevel)
+	case "ERROR":
+		fallthrough
+	default:
+		log.SetLevel(log.ErrorLevel)
+	}
+
+	switch os.Getenv("LOG_FORMAT") {
+	case "JSON":
+		log.SetFormatter(&log.JSONFormatter{})
+	default:
+		log.SetFormatter(&log.TextFormatter{})
 	}
 
 	for i, h := range Headers {
@@ -42,10 +55,7 @@ func init() {
 	}
 
 	if Port == "" {
-		Port = ":8090"
-	}
-	if Port[0] != ':' {
-		Port = ":" + Port
+		Port = ":8080"
 	}
 }
 
@@ -67,10 +77,7 @@ func main() {
 		grpcweb.WithAllowedRequestHeaders(Headers),
 	)
 
-	if Debug {
-		log.Printf("starting on %v\nallowing headers: %v\nallowing origins: %v\n",
-			Port, Headers, Origins)
-	}
+	log.Infoln("Starting on", Port)
 	http.ListenAndServe(Port, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		wsvr.ServeHTTP(w, r)
 	}))
@@ -83,17 +90,22 @@ type Server struct {
 
 func NewServer(ctx context.Context) *Server {
 	// uses GOOGLE_APPLICATION_CREDENTIALS
+	log.Infoln("NewServer finding default credentials")
 	cred, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/firebase.database", "https://www.googleapis.com/auth/userinfo.email")
 	if err != nil {
-		log.Fatalf("NewServer default credentials not found: %v", err)
+		log.Fatalln("NewServer finding default credentials", err)
 	}
+
+	log.Infoln("NewServer firebase NewApp")
 	app, err := firebase.NewApp(ctx, nil, option.WithCredentials(cred))
 	if err != nil {
-		log.Fatalf("NewServer firebase.NewApp: %v\n", err)
+		log.Fatalln("NewServer firebase NewApp", err)
 	}
+
+	log.Infoln("NewServer firebase authClient")
 	authClient, err := app.Auth(ctx)
 	if err != nil {
-		log.Fatalf("NewServer app.Auth: %v\n", err)
+		log.Fatalln("NewServer firebase authClient", err)
 	}
 	return &Server{
 		app:        app,
@@ -102,25 +114,32 @@ func NewServer(ctx context.Context) *Server {
 }
 
 func (s *Server) Echo(ctx context.Context, r *authed.Msg) (*authed.Msg, error) {
+	log.Infoln("Echo get metadata")
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		log.Printf("Echo: no metadata found")
+		log.Errorln("Echo no metadata")
 		return nil, fmt.Errorf("Echo: no metadata found")
 	}
+
+	log.Infoln("Echo get authorization header")
 	authHeader, ok := md["authorization"]
 	if !ok {
-		log.Printf("Echo: no authorization header found")
+		log.Errorln("Echo no authorization header")
 		return nil, fmt.Errorf("Echo: no authorization header found")
 	}
-	token, err := s.authClient.VerifyIDToken(ctx, authHeader[0])
+
+	log.Infoln("Echo VerifyIDTokenAndCheckRevoked")
+	token, err := s.authClient.VerifyIDTokenAndCheckRevoked(ctx, authHeader[0])
 	if err != nil {
-		log.Printf("Echo: verification: %v", err)
-		return nil, fmt.Errorf("Echo: verification: %v", err)
+		log.Errorln("Echo VerifyIDTokenAndCheckRevoked", err)
+		return nil, err
 	}
+
+	log.Infoln("Echo GetUser")
 	userRecord, err := s.authClient.GetUser(ctx, token.UID)
 	if err != nil {
-		log.Printf("Echo: GetUser: %v", err)
-		return nil, fmt.Errorf("Echo: GetUser: %v", err)
+		log.Errorln("Echo GetUser", err)
+		return nil, err
 	}
 	return &authed.Msg{
 		Msg: fmt.Sprintf("hello %v, your email is %v\n", userRecord.DisplayName, userRecord.Email),
@@ -128,32 +147,35 @@ func (s *Server) Echo(ctx context.Context, r *authed.Msg) (*authed.Msg, error) {
 }
 
 func (s *Server) authInterceptor(ctx context.Context, r interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	log.Infoln("authInterceptor authorizing")
 	if err := s.authorize(ctx); err != nil {
-		if Debug {
-			log.Printf("authInterceptor not authorized: %v\n", err)
-		}
+		log.Errorln("authInterceptor not authorized", err)
 		return nil, err
 	}
 
+	log.Infoln("authInterceptor authorized")
 	return handler(ctx, r)
 }
 
 func (s *Server) authorize(ctx context.Context) error {
+	log.Infoln("authorize get metadata")
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		log.Println("authorize: no metadata found")
+		log.Errorln("authorize no metadata")
 		return errors.New("authorize: no metadata found")
 	}
 
+	log.Infoln("authorize get authHeader")
 	authHeader, ok := md["authorization"]
 	if !ok {
-		log.Println("authorize: authorization header not found")
+		log.Errorln("authorize no authHeader")
 		return errors.New("authorize: authorization header not found")
 	}
 
+	log.Infoln("authorize VerifyIDToken")
 	_, err := s.authClient.VerifyIDToken(context.Background(), authHeader[0])
 	if err != nil {
-		log.Printf("authorize: VerifyIDToken: %v\n", err)
+		log.Errorln("authorize VerifyIDToken", err)
 		return fmt.Errorf("authorize: VerifyIDToken: %v\n", err)
 	}
 	return nil

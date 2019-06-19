@@ -36,8 +36,12 @@ github.com/gorilla/websocket
 github.com/hashicorp/golang-lru/simplelru
 # github.com/improbable-eng/grpc-web v0.9.6
 github.com/improbable-eng/grpc-web/go/grpcweb
+# github.com/konsorten/go-windows-terminal-sequences v1.0.1
+github.com/konsorten/go-windows-terminal-sequences
 # github.com/rs/cors v1.6.0
 github.com/rs/cors
+# github.com/sirupsen/logrus v1.4.2
+github.com/sirupsen/logrus
 # go.opencensus.io v0.22.0
 go.opencensus.io/trace
 go.opencensus.io/plugin/ocgrpc
