@@ -99,9 +99,12 @@ func NewServer(ctx context.Context) *Server {
 
 	log.Infoln("testing permissions")
 	ui := authClient.Users(ctx, "")
-	for ur, err := ui.Next(); err == nil; ur, err = ui.Next() {
+	ur, err := ui.Next()
+	for err == nil {
 		log.Infoln("testing found user", ur.Email)
+		ur, err = ui.Next()
 	}
+	log.Errorln("testing error", err)
 
 	return &Server{
 		app:        app,
