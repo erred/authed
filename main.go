@@ -13,7 +13,6 @@ import (
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/seankhliao/authed/authed"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -87,7 +86,7 @@ type Server struct {
 
 func NewServer(ctx context.Context) *Server {
 	log.Infoln("NewServer firebase NewApp")
-	app, err := firebase.NewApp(ctx, nil, option.WithCredentialsFile(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")))
+	app, err := firebase.NewApp(ctx, nil)
 	if err != nil {
 		log.Fatalln("NewServer firebase NewApp", err)
 	}
