@@ -85,13 +85,6 @@ type Server struct {
 }
 
 func NewServer(ctx context.Context) *Server {
-	// uses GOOGLE_APPLICATION_CREDENTIALS
-	// log.Infoln("NewServer finding default credentials")
-	// cred, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/firebase", "https://www.googleapis.com/auth/cloud-platform")
-	// if err != nil {
-	// 	log.Fatalln("NewServer finding default credentials", err)
-	// }
-
 	log.Infoln("NewServer firebase NewApp")
 	app, err := firebase.NewApp(ctx, nil)
 	if err != nil {
@@ -103,6 +96,13 @@ func NewServer(ctx context.Context) *Server {
 	if err != nil {
 		log.Fatalln("NewServer firebase authClient", err)
 	}
+
+	log.Infoln("testing permissions")
+	ui := authClient.Users(ctx, "")
+	for ur, err := ui.Next(); err == nil; ur, err = ui.Next() {
+		log.Infoln("testing found user", ur.Email)
+	}
+
 	return &Server{
 		app:        app,
 		authClient: authClient,
@@ -144,35 +144,28 @@ func (s *Server) Echo(ctx context.Context, r *authed.Msg) (*authed.Msg, error) {
 
 func (s *Server) authInterceptor(ctx context.Context, r interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	log.Infoln("authInterceptor authorizing")
-	if err := s.authorize(ctx); err != nil {
-		log.Errorln("authInterceptor not authorized", err)
-		return nil, err
-	}
 
-	log.Infoln("authInterceptor authorized")
-	return handler(ctx, r)
-}
-
-func (s *Server) authorize(ctx context.Context) error {
 	log.Infoln("authorize get metadata")
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		log.Errorln("authorize no metadata")
-		return errors.New("authorize: no metadata found")
+		return nil, errors.New("authorize: no metadata found")
 	}
 
 	log.Infoln("authorize get authHeader")
 	authHeader, ok := md["authorization"]
 	if !ok {
 		log.Errorln("authorize no authHeader")
-		return errors.New("authorize: authorization header not found")
+		return nil, errors.New("authorize: authorization header not found")
 	}
 
 	log.Infoln("authorize VerifyIDToken")
 	_, err := s.authClient.VerifyIDToken(context.Background(), authHeader[0])
 	if err != nil {
 		log.Errorln("authorize VerifyIDToken", err)
-		return fmt.Errorf("authorize: VerifyIDToken: %v\n", err)
+		return nil, fmt.Errorf("authorize: VerifyIDToken: %v\n", err)
 	}
-	return nil
+
+	log.Infoln("authInterceptor authorized")
+	return handler(ctx, r)
 }
