@@ -20,32 +20,28 @@ import (
 var (
 	Version = "set with -ldflags \"-X main.Verions=$VERSION\""
 
-	Headers = strings.Split(os.Getenv("HEADERS"), ",")
+	Headers = []string{"*"}
 	Origins = make(map[string]struct{})
 	Port    = os.Getenv("PORT")
 )
 
 func init() {
-	switch os.Getenv("LOG_LEVEL") {
-	case "DEBUG":
+	switch strings.ToLower(os.Getenv("LOG_LEVEL")) {
+	case "debug":
 		log.SetLevel(log.DebugLevel)
-	case "INFO":
+	case "info":
 		log.SetLevel(log.InfoLevel)
-	case "ERROR":
+	case "error":
 		fallthrough
 	default:
 		log.SetLevel(log.ErrorLevel)
 	}
 
-	switch os.Getenv("LOG_FORMAT") {
-	case "JSON":
+	switch strings.ToLower(os.Getenv("LOG_FORMAT")) {
+	case "json":
 		log.SetFormatter(&log.JSONFormatter{})
 	default:
 		log.SetFormatter(&log.TextFormatter{})
-	}
-
-	for i, h := range Headers {
-		Headers[i] = strings.TrimSpace(h)
 	}
 
 	for _, o := range strings.Split(os.Getenv("ORIGINS"), ",") {
