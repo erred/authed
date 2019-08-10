@@ -11,10 +11,10 @@ import (
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/auth"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
-	"github.com/seankhliao/authed/authed"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"seankhliao.com/authed/authed"
 )
 
 var (

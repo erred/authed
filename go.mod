@@ -1,4 +1,4 @@
-module github.com/seankhliao/authed
+module seankhliao.com/authed
 
 go 1.12
 
